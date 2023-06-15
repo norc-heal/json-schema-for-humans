@@ -36,10 +36,6 @@
         {% include "content.md" %}
     {% endwith %}
 {% else %}
-    {# Properties, pattern properties, additional properties #}
-    {% if schema.type_name == "object" %}
-    {{- schema | md_properties_table | md_generate_table -}}
-    {% endif %}
 
     {# Combining: allOf, anyOf, oneOf, not #}
     {% if schema.kw_all_of %}

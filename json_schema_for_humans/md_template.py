@@ -193,7 +193,6 @@ class MarkdownTemplate(object):
         env.filters["md_get_numeric_maximum_restriction"] = get_numeric_maximum_restriction
         env.filters["md_escape_for_table"] = escape_for_table
         env.filters["md_heading"] = self.heading
-        env.filters["md_properties_table"] = self.properties_table
         env.filters["md_type_info_table"] = self.type_info_table
         env.filters["md_array_restrictions"] = self.array_restrictions
         env.filters["md_array_items_restrictions"] = array_items_restrictions
@@ -203,7 +202,6 @@ class MarkdownTemplate(object):
         env.filters["md_first_line"] = first_line_fixed
 
         env.globals["md_badge"] = self.badge
-        env.globals["md_get_toc"] = self.get_toc
 
     def heading(self, title: str, depth: int, html_id: Union[bool, str] = False, nested: bool = False) -> str:
         """
@@ -246,47 +244,14 @@ class MarkdownTemplate(object):
         if nested:
             menu = "<strong>"
 
-        # generate markdown title with anchor (except if depth 0)
-        if depth == 0:
-            menu += f" {title}"
-        else:
-            if self.config.template_md_options.get("show_heading_numbers"):
-                menu += f' <a name="{html_id}"></a>{heading_numbers} {title}'
-            else:
-                menu += f' <a name="{html_id}"></a>{title}'
-
-        # store current heading in toc
-        toc_menu = f"[{title}](#{html_id})"
         if self.config.template_md_options.get("show_heading_numbers"):
-            toc_menu = f"[{heading_numbers} {title}](#{html_id})"
-        self.toc[heading_numbers] = {"depth": depth, "menu": toc_menu}
+            menu += f' {heading_numbers} {title}'
+        else:
+            menu += f' {title}'
 
         if nested:
             menu += "</strong>"
         return menu
-
-    def get_toc(self) -> str:
-        """
-        generate Table Of Content from the heading that has been generated
-        """
-        if not self.config.show_toc:
-            return ""
-
-        toc_str = ""
-
-        second_heading_depth = 0
-        for i, heading in enumerate(self.toc.values()):
-            # Ignore first heading
-            if i == 0:
-                continue
-            if i == 1:
-                second_heading_depth = heading["depth"]
-
-            # Ensure we have no space at first level for TOC to be recognized
-            indent = "  " * (heading["depth"] - second_heading_depth)
-            toc_str += indent + "- " + heading["menu"] + "\n"
-
-        return toc_str
 
     @staticmethod
     def format_link(title: str, link: str, tooltip: str = "") -> str:
@@ -317,52 +282,6 @@ class MarkdownTemplate(object):
             return f"![{text_badge}](https://img.shields.io/badge/{name}{value_str}-{color})"
         else:
             return f"[{text_badge}]"
-
-    def properties_table(self, schema: SchemaNode) -> List[List]:
-        """
-        Generate list of properties ready to be rendered by generate_table filter
-        """
-        properties = []
-        for sub_property in schema.iterate_properties:
-            line: List[str] = []
-            # property name
-            property_name = "+ " if sub_property.is_required_property else "- "
-            property_name += self.format_link(escape_for_table(sub_property.property_name), sub_property.html_id)
-            line.append(property_name)
-            # pattern
-            line.append("Yes" if sub_property.is_pattern_property else "No")
-            # type
-            line.append(
-                "Combination" if jinja_filters.is_combining(sub_property) else escape_for_table(sub_property.type_name)
-            )
-            # Deprecated
-            line.append(
-                self.badge("Deprecated", "red") if jinja_filters.deprecated(self.config, sub_property) else "No"
-            )
-            # Link
-            if sub_property.should_be_a_link(self.config):
-                line.append(
-                    "Same as " + self.format_link(sub_property.links_to.link_name, sub_property.links_to.html_id)
-                )
-            elif sub_property.refers_to:
-                line.append("In " + sub_property.ref_path)
-            else:
-                line.append("-")
-
-            # title or description
-            description = sub_property.description or "-"
-            if sub_property.title:
-                description = sub_property.title
-
-            line.append(escape_for_table(description))
-
-            properties.append(line)
-
-        if properties:
-            # add header
-            properties.insert(0, ["Property", "Pattern", "Type", "Deprecated", "Definition", "Title/Description"])
-
-        return properties
 
     def type_info_table(self, schema: SchemaNode) -> List[List]:
         """

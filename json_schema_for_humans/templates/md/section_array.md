@@ -16,7 +16,7 @@
 {% if schema.tuple_validation_items %}
 {% for item in schema.tuple_validation_items %}
     {% filter md_heading(depth+1) %}
-    {% with schema=item %}{%- include "breadcrumbs.md" %}{% endwith %}
+    {% with schema=item %}{% endwith %}
     {% endfilter %}
     {% with schema=item, skip_headers=False, depth=depth+1, skip_required=True %}
         {% include "content.md" %}
